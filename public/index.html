@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Minecraft Server Panel - Advanced Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1::before {
+            content: "🎮";
+            font-size: 28px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .server-selector {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-list {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .server-tab {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .server-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .server-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+
+        .server-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .server-status.online {
+            background: #4caf50;
+            box-shadow: 0 0 5px #4caf50;
+            animation: pulse 1.5s infinite;
+        }
+
+        .server-status.offline {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .create-server-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .create-server-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .main-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+        }
+
+        .main-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .main-tab:hover {
+            color: white;
+        }
+
+        .main-tab.active {
+            color: white;
+        }
+
+        .main-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Console Styles - Preserve original colors */
+        .console-container {
+            background: #0a0e27;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .console-header {
+            background: #1a1f3e;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2f4e;
+        }
+
+        .console-output {
+            background: #0a0e27;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 12px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        /* ANSI Color Styles */
+        .console-output .ansi-black { color: #000000; }
+        .console-output .ansi-red { color: #ff5555; }
+        .console-output .ansi-green { color: #55ff55; }
+        .console-output .ansi-yellow { color: #ffff55; }
+        .console-output .ansi-blue { color: #5555ff; }
+        .console-output .ansi-magenta { color: #ff55ff; }
+        .console-output .ansi-cyan { color: #55ffff; }
+        .console-output .ansi-white { color: #ffffff; }
+        .console-output .ansi-bright-black { color: #808080; }
+        .console-output .ansi-bright-red { color: #ff8080; }
+        .console-output .ansi-bright-green { color: #80ff80; }
+        .console-output .ansi-bright-yellow { color: #ffff80; }
+        .console-output .ansi-bright-blue { color: #8080ff; }
+        .console-output .ansi-bright-magenta { color: #ff80ff; }
+        .console-output .ansi-bright-cyan { color: #80ffff; }
+        .console-output .ansi-bright-white { color: #ffffff; }
+
+        .console-input {
+            background: #1a1f3e;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #2a2f4e;
+        }
+
+        .console-input input {
+            flex: 1;
+            background: #0a0e27;
+            border: 1px solid #2a2f4e;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .console-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* File Browser */
+        .file-browser {
+            display: flex;
+            gap: 20px;
+            min-height: 500px;
+        }
+
+        .file-tree {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .file-tree-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 2px 0;
+            transition: all 0.2s;
+            font-size: 13px;
+            word-break: break-word;
+        }
+
+        .file-tree-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-tree-item.directory {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .file-tree-item.active {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        .file-content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-toolbar {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .file-editor {
+            flex: 1;
+            background: #0a0e27;
+            color: #d4d4d4;
+            font-family: 'Courier New', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 15px;
+            border: none;
+            resize: vertical;
+            outline: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 500px;
+        }
+
+        .file-editor:focus {
+            outline: none;
+        }
+
+        /* Settings Grid */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .setting-group {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .setting-group input, .setting-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .setting-group input:focus, .setting-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Plugins Grid */
+        .plugins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .plugin-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            transition: transform 0.2s;
+        }
+
+        .plugin-card:hover {
+            transform: translateY(-2px);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .plugin-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .plugin-version {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 10px;
+        }
+
+        .plugin-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1f3e;
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.online {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .status-badge.offline {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        #fileStatus {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+            transition: opacity 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .file-browser {
+                flex-direction: column;
+            }
+            
+            .file-tree {
+                width: 100%;
+                max-height: 200px;
+            }
+            
+            .main-tab {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>Minecraft Server Panel</h1>
+        <p>Advanced Server Management | Console | Files | Settings | Plugins</p>
+    </div>
+
+    <div class="container">
+        <!-- Server Selector -->
+        <div class="server-selector">
+            <div class="server-list" id="serverList">
+                <div class="loading">Loading servers...</div>
+            </div>
+            <button class="create-server-btn" onclick="showCreateServerModal()">+ Create New Server</button>
+        </div>
+
+        <!-- Main Tabs -->
+        <div class="main-tabs" id="mainTabs" style="display: none;">
+            <button class="main-tab active" data-tab="console">💻 Console</button>
+            <button class="main-tab" data-tab="files">📁 File Manager</button>
+            <button class="main-tab" data-tab="settings">⚙️ Server Settings</button>
+            <button class="main-tab" data-tab="plugins">🔌 Plugins</button>
+            <button class="main-tab" data-tab="backup">💾 Backup & Restore</button>
+        </div>
+
+        <!-- Console Tab -->
+        <div class="tab-content active" id="tab-console">
+            <div class="card">
+                <div class="console-container">
+                    <div class="console-header">
+                        <span>📟 Server Console</span>
+                        <div>
+                            <button class="btn btn-sm" onclick="clearConsole()">Clear</button>
+                            <button class="btn btn-sm" onclick="downloadConsoleLog()">Download Log</button>
+                        </div>
+                    </div>
+                    <div class="console-output" id="consoleOutput">
+                        <span style="color: #888;">Select a server to view console...</span>
+                    </div>
+                    <div class="console-input">
+                        <input type="text" id="commandInput" placeholder="Type Minecraft command... (e.g., /help, /list, /gamemode creative)" onkeypress="handleCommandKeypress(event)">
+                        <button class="btn btn-primary" onclick="sendCommand()">Send</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Server Control Panel -->
+            <div class="card">
+                <h3>🎮 Server Control</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-success" id="startBtn" onclick="startServer()">▶ Start Server</button>
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopServer()">⏹ Stop Server</button>
+                    <button class="btn btn-warning" id="restartBtn" onclick="restartServer()">🔄 Restart Server</button>
+                    <div style="flex: 1"></div>
+                    <div id="serverStats">
+                        <span class="status-badge offline">● Offline</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div><strong>RAM:</strong> <span id="ramDisplay">-</span> MB</div>
+                    <div><strong>Uptime:</strong> <span id="uptimeDisplay">-</span></div>
+                    <div><strong>JAR:</strong> <span id="jarDisplay">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Manager Tab -->
+        <div class="tab-content" id="tab-files">
+            <div class="card">
+                <div class="file-browser">
+                    <div class="file-tree" id="fileTree">
+                        <div class="loading">Select a server to browse files...</div>
+                    </div>
+                    <div class="file-content">
+                        <div class="file-toolbar">
+                            <button class="btn btn-sm" onclick="uploadFile()">📤 Upload File</button>
+                            <button class="btn btn-sm" onclick="createFolder()">📁 Create Folder</button>
+                            <button class="btn btn-sm" onclick="refreshFileList()">🔄 Refresh</button>
+                            <button class="btn btn-sm btn-primary" id="saveFileBtn" onclick="saveCurrentFile()" style="display: none;">💾 Save File (Ctrl+S)</button>
+                            <button class="btn btn-sm" onclick="downloadCurrentFile()">📥 Download</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCurrentFile()">🗑 Delete</button>
+                        </div>
+                        <textarea class="file-editor" id="fileEditor" placeholder="Select a file to edit..." style="display: none;"></textarea>
+                        <div id="filePreview" style="display: flex; justify-content: center; align-items: center; min-height: 500px; color: #888;">
+                            📁 Select a file to view/edit
+                        </div>
+                        <div id="fileStatus" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Settings Tab -->
+        <div class="tab-content" id="tab-settings">
+            <div class="card">
+                <h3>⚙️ Server Properties</h3>
+                <div class="settings-grid" id="settingsGrid">
+                    <div class="loading">Loading server settings...</div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveServerProperties()">💾 Save Properties</button>
+                    <button class="btn btn-warning" onclick="reloadServerProperties()">🔄 Reload</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎮 Java & Performance Settings</h3>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label>RAM Allocation (MB)</label>
+                        <input type="number" id="ramSetting" value="1024" min="512" max="16384" step="512">
+                        <small style="color: #888;">Recommended: 1024-4096 MB</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>Server JAR File</label>
+                        <select id="jarSelect"></select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Java Arguments (Optional)</label>
+                        <input type="text" id="javaArgs" placeholder="-XX:+UseG1GC -XX:+ParallelRefProcEnabled">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="applyServerSettings()">Apply Settings</button>
+            </div>
+        </div>
+
+        <!-- Plugins Tab -->
+        <div class="tab-content" id="tab-plugins">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>🔌 Installed Plugins</h3>
+                    <button class="btn btn-primary" onclick="uploadPlugin()">📤 Upload Plugin</button>
+                </div>
+                <div id="pluginsGrid" class="plugins-grid">
+                    <div class="loading">Select a server to view plugins...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup Tab -->
+        <div class="tab-content" id="tab-backup">
+            <div class="card">
+                <h3>💾 Backup & Restore</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="createBackup()">📦 Create Backup</button>
+                    <button class="btn btn-success" onclick="downloadServerBackup()">⬇️ Download Backup</button>
+                    <input type="file" id="restoreFile" style="display: none;" accept=".zip">
+                    <button class="btn btn-warning" onclick="document.getElementById('restoreFile').click()">🔄 Restore from Backup</button>
+                </div>
+                <div id="backupList">
+                    <div class="loading">Backups are downloaded to your computer. Use "Restore from Backup" to upload a previous backup ZIP.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Server Modal -->
+    <div id="createServerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Server</h3>
+                <button onclick="closeModal('createServerModal')" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="setting-group" style="margin-bottom: 15px;">
+                <label>Server Name</label>
+                <input type="text" id="newServerName" placeholder="my-awesome-server">
+            </div>
+            <div class="setting-group" style="margin-bottom: 15px;">
+                <label>Upload Server Files (ZIP or individual files)</label>
+                <input type="file" id="serverUploadFile" multiple>
+                <small style="color: #888;">Upload your existing server files, or leave empty to create empty server</small>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn" onclick="closeModal('createServerModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createServer()">Create Server</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentServer = null;
+        let currentFilePath = null;
+        let currentFileContent = null;
+        let isFileModified = false;
+        let consoleBuffer = [];
+        
+        // ANSI color mapping for console
+        function convertAnsiToHtml(text) {
+            // First, escape HTML
+            text = text.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+            
+            // ANSI color codes mapping
+            const colors = {
+                '30': 'ansi-black',
+                '31': 'ansi-red',
+                '32': 'ansi-green',
+                '33': 'ansi-yellow',
+                '34': 'ansi-blue',
+                '35': 'ansi-magenta',
+                '36': 'ansi-cyan',
+                '37': 'ansi-white',
+                '90': 'ansi-bright-black',
+                '91': 'ansi-bright-red',
+                '92': 'ansi-bright-green',
+                '93': 'ansi-bright-yellow',
+                '94': 'ansi-bright-blue',
+                '95': 'ansi-bright-magenta',
+                '96': 'ansi-bright-cyan',
+                '97': 'ansi-bright-white'
+            };
+            
+            // Replace ANSI codes
+            let inSpan = false;
+            let result = '';
+            let i = 0;
+            
+            while (i < text.length) {
+                if (text[i] === '\x1b' && text[i+1] === '[') {
+                    let j = i + 2;
+                    let code = '';
+                    while (j < text.length && text[j] !== 'm') {
+                        code += text[j];
+                        j++;
+                    }
+                    
+                    if (code === '0' || code === '') {
+                        // Reset
+                        if (inSpan) {
+                            result += '</span>';
+                            inSpan = false;
+                        }
+                    } else if (colors[code]) {
+                        if (inSpan) {
+                            result += '</span>';
+                        }
+                        result += `<span class="${colors[code]}">`;
+                        inSpan = true;
+                    }
+                    
+                    i = j + 1;
+                } else {
+                    result += text[i];
+                    i++;
+                }
+            }
+            
+            if (inSpan) {
+                result += '</span>';
+            }
+            
+            return result;
+        }
+
+        // Tab switching
+        document.querySelectorAll('.main-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+                
+                if (tabId === 'files' && currentServer) {
+                    loadFileTree();
+                }
+                if (tabId === 'plugins' && currentServer) {
+                    loadPlugins();
+                }
+                if (tabId === 'settings' && currentServer) {
+                    loadServerSettings();
+                }
+            });
+        });
+
+        // Load servers list
+        async function loadServers() {
+            try {
+                const response = await fetch('/api/servers');
+                const servers = await response.json();
+                renderServerList(servers);
+            } catch (error) {
+                console.error('Failed to load servers:', error);
+                document.getElementById('serverList').innerHTML = '<div class="loading">Failed to load servers</div>';
+            }
+        }
+
+        function renderServerList(servers) {
+            const container = document.getElementById('serverList');
+            
+            if (servers.length === 0) {
+                container.innerHTML = '<div class="loading">No servers found. Create your first server!</div>';
+                document.getElementById('mainTabs').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('mainTabs').style.display = 'flex';
+            
+            container.innerHTML = servers.map(server => `
+                <div class="server-tab ${currentServer === server.name ? 'active' : ''}" onclick="selectServer('${server.name}')">
+                    <span class="server-status ${server.status}"></span>
+                    <span>${server.name}</span>
+                    ${server.status === 'running' ? '<span style="font-size: 10px;">● Running</span>' : ''}
+                </div>
+            `).join('');
+        }
+
+        async function selectServer(serverName) {
+            currentServer = serverName;
+            loadServers();
+            
+            const response = await fetch(`/api/server/${serverName}`);
+            const server = await response.json();
+            
+            document.getElementById('ramDisplay').textContent = server.ram || '-';
+            document.getElementById('jarDisplay').textContent = server.jarFiles?.[0] || '-';
+            
+            const jarSelect = document.getElementById('jarSelect');
+            if (server.jarFiles) {
+                jarSelect.innerHTML = server.jarFiles.map(jar => `<option value="${jar}">${jar}</option>`).join('');
+            }
+            
+            socket.emit('subscribe', serverName);
+            
+            const consoleResponse = await fetch(`/api/server/${serverName}/console`);
+            const consoleData = await consoleResponse.json();
+            if (consoleData.console) {
+                consoleBuffer = consoleData.console;
+                updateConsoleDisplay();
+            }
+            
+            updateServerStatus(server.status);
+            
+            if (document.getElementById('tab-settings').classList.contains('active')) {
+                loadServerSettings();
+            }
+        }
+
+        function updateServerStatus(status) {
+            const statusElem = document.getElementById('serverStats').querySelector('.status-badge');
+            if (status === 'running') {
+                statusElem.className = 'status-badge online';
+                statusElem.innerHTML = '● Online';
+            } else {
+                statusElem.className = 'status-badge offline';
+                statusElem.innerHTML = '● Offline';
+            }
+        }
+
+        async function startServer() {
+            if (!currentServer) return;
+            
+            const ram = document.getElementById('ramSetting').value;
+            const jarFile = document.getElementById('jarSelect').value;
+            const javaArgs = document.getElementById('javaArgs').value;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ram, jarFile, javaArgs })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addToConsole(`\x1b[32m[Panel] Server starting with ${data.ram}MB RAM...\x1b[0m\n`);
+                    updateServerStatus('running');
+                } else {
+                    addToConsole(`\x1b[31m[Panel] Failed to start: ${data.error}\x1b[0m\n`);
+                }
+            } catch (error) {
+                addToConsole(`\x1b[31m[Panel] Error: ${error.message}\x1b[0m\n`);
+            }
+        }
+
+        async function stopServer() {
+            if (!currentServer) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/stop`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    addToConsole(`\x1b[33m[Panel] Stopping server...\x1b[0m\n`);
+                }
+            } catch (error) {
+                addToConsole(`\x1b[31m[Panel] Error: ${error.message}\x1b[0m\n`);
+            }
+        }
+
+        function restartServer() {
+            if (!currentServer) return;
+            stopServer();
+            setTimeout(() => startServer(), 5000);
+        }
+
+        function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            if (!command || !currentServer) return;
+            
+            fetch(`/api/server/${currentServer}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+            
+            input.value = '';
+        }
+
+        function handleCommandKeypress(event) {
+            if (event.key === 'Enter') {
+                sendCommand();
+            }
+        }
+
+        function addToConsole(text) {
+            consoleBuffer.push(text);
+            updateConsoleDisplay();
+        }
+
+        function updateConsoleDisplay() {
+            const consoleDiv = document.getElementById('consoleOutput');
+            let fullText = consoleBuffer.join('');
+            let htmlText = convertAnsiToHtml(fullText);
+            consoleDiv.innerHTML = htmlText + '<span style="animation: blink 1s infinite;">_</span>';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function clearConsole() {
+            consoleBuffer = [];
+            updateConsoleDisplay();
+        }
+
+        function downloadConsoleLog() {
+            const blob = new Blob([consoleBuffer.join('')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentServer}_console.log`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // File Manager Functions
+        async function loadFileTree(path = '') {
+            if (!currentServer) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/files?path=${encodeURIComponent(path)}`);
+                const files = await response.json();
+                
+                const treeContainer = document.getElementById('fileTree');
+                const pathParts = path.split('/').filter(p => p);
+                
+                let treeHtml = `<div class="file-tree-item directory" onclick="loadFileTree('')">📁 /</div>`;
+                
+                let currentPath = '';
+                for (let i = 0; i < pathParts.length; i++) {
+                    currentPath += (currentPath ? '/' : '') + pathParts[i];
+                    treeHtml += `<div class="file-tree-item directory" style="padding-left: ${(i + 1) * 20}px" onclick="loadFileTree('${currentPath}')">
+                        📁 ${pathParts[i]}/
+                    </div>`;
+                }
+                
+                files.forEach(file => {
+                    const padding = (pathParts.length + 1) * 20;
+                    treeHtml += `
+                        <div class="file-tree-item ${file.isDirectory ? 'directory' : ''}" 
+                             style="padding-left: ${padding}px"
+                             onclick="${file.isDirectory ? `loadFileTree('${file.path}')` : `editFile('${file.path}')`}">
+                            ${file.isDirectory ? '📁' : '📄'} ${file.name}
+                            ${!file.isDirectory ? `<span style="float: right; font-size: 10px; color: #888;">${(file.size / 1024).toFixed(1)}KB</span>` : ''}
+                        </div>
+                    `;
+                });
+                
+                treeContainer.innerHTML = treeHtml;
+                document.getElementById('fileStatus').style.display = 'block';
+                document.getElementById('fileStatus').innerHTML = `📂 ${files.length} items • Path: /${path || 'root'}`;
+                
+            } catch (error) {
+                console.error('Failed to load files:', error);
+            }
+        }
+
+        async function editFile(filePath) {
+            if (!currentServer) return;
+            
+            if (isFileModified) {
+                const saveChanges = confirm('You have unsaved changes. Save before opening another file?');
+                if (saveChanges) {
+                    await saveCurrentFile();
+                }
+            }
+            
+            try {
+                document.getElementById('fileStatus').innerHTML = `📖 Loading ${filePath}...`;
+                
+                const response = await fetch(`/api/server/${currentServer}/file?path=${encodeURIComponent(filePath)}`);
+                const data = await response.json();
+                
+                if (data.type === 'text') {
+                    currentFilePath = filePath;
+                    currentFileContent = data.content;
+                    isFileModified = false;
+                    
+                    const editor = document.getElementById('fileEditor');
+                    const preview = document.getElementById('filePreview');
+                    const saveBtn = document.getElementById('saveFileBtn');
+                    
+                    editor.style.display = 'block';
+                    preview.style.display = 'none';
+                    saveBtn.style.display = 'inline-block';
+                    editor.value = data.content;
+                    
+                    document.getElementById('fileStatus').innerHTML = `✏️ Editing: ${filePath} • ${(data.size / 1024).toFixed(2)} KB • Press Ctrl+S to save`;
+                    
+                    editor.onkeydown = function(e) {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                            e.preventDefault();
+                            saveCurrentFile();
+                            return false;
+                        }
+                        isFileModified = true;
+                        document.getElementById('fileStatus').innerHTML = `✏️ Editing: ${filePath} • Modified • Press Ctrl+S to save`;
+                    };
+                    
+                } else {
+                    alert(`Binary file - cannot edit in browser\nFile size: ${(data.size / 1024 / 1024).toFixed(2)} MB`);
+                }
+            } catch (error) {
+                alert('Failed to open file: ' + error.message);
+            }
+        }
+
+        async function saveCurrentFile() {
+            if (!currentServer || !currentFilePath) {
+                alert('No file is currently open');
+                return;
+            }
+            
+            const content = document.getElementById('fileEditor').value;
+            const saveBtn = document.getElementById('saveFileBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '💾 Saving...';
+            saveBtn.disabled = true;
+            document.getElementById('fileStatus').innerHTML = `💾 Saving ${currentFilePath}...`;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentFilePath, content })
+                });
+                
+                if (response.ok) {
+                    isFileModified = false;
+                    currentFileContent = content;
+                    document.getElementById('fileStatus').innerHTML = `✅ Saved: ${currentFilePath} • ${new Date().toLocaleTimeString()}`;
+                    showToast('File saved successfully!', 'success');
+                } else {
+                    throw new Error('Save failed');
+                }
+            } catch (error) {
+                document.getElementById('fileStatus').innerHTML = `❌ Save failed: ${error.message}`;
+                showToast('Failed to save file!', 'error');
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        function showToast(message, type) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                document.body.appendChild(toast);
+            }
+            toast.style.backgroundColor = type === 'success' ? '#4caf50' : '#f44336';
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        function uploadFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.onchange = async (e) => {
+                const files = Array.from(e.target.files);
+                const formData = new FormData();
+                files.forEach(file => formData.append('files', file));
+                
+                try {
+                    const response = await fetch(`/api/server/upload-multiple/${currentServer}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast(`Uploaded ${result.files.length} files!`, 'success');
+                        loadFileTree();
+                    }
+                } catch (error) {
+                    showToast('Upload failed', 'error');
+                }
+            };
+            input.click();
+        }
+
+        function createFolder() {
+            const folderName = prompt('Enter folder name:');
+            if (!folderName) return;
+            
+            fetch(`/api/server/${currentServer}/folder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: '', folderName })
+            }).then(() => {
+                showToast(`Folder "${folderName}" created!`, 'success');
+                loadFileTree();
+            });
+        }
+
+        function refreshFileList() {
+            loadFileTree();
+        }
+
+        function downloadCurrentFile() {
+            if (!currentFilePath) return;
+            window.location.href = `/api/server/${currentServer}/file?path=${encodeURIComponent(currentFilePath)}`;
+        }
+
+        async function deleteCurrentFile() {
+            if (!currentFilePath) return;
+            if (!confirm(`Delete "${currentFilePath}"?`)) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentFilePath })
+                });
+                
+                if (response.ok) {
+                    showToast(`Deleted ${currentFilePath}`, 'success');
+                    currentFilePath = null;
+                    document.getElementById('fileEditor').style.display = 'none';
+                    document.getElementById('filePreview').style.display = 'flex';
+                    document.getElementById('saveFileBtn').style.display = 'none';
+                    loadFileTree();
+                }
+            } catch (error) {
+                showToast('Delete failed', 'error');
+            }
+        }
+
+        // Server Settings
+        async function loadServerSettings() {
+            if (!currentServer) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}`);
+                const server = await response.json();
+                
+                const settingsGrid = document.getElementById('settingsGrid');
+                const properties = server.properties || {};
+                
+                settingsGrid.innerHTML = `
+                    <div class="setting-group">
+                        <label>Server Port</label>
+                        <input type="number" id="prop_server-port" value="${properties['server-port'] || '25565'}">
+                    </div>
+                    <div class="setting-group">
+                        <label>Max Players</label>
+                        <input type="number" id="prop_max-players" value="${properties['max-players'] || '20'}">
+                    </div>
+                    <div class="setting-group">
+                        <label>MOTD</label>
+                        <input type="text" id="prop_motd" value="${properties['motd'] || 'A Minecraft Server'}">
+                    </div>
+                    <div class="setting-group">
+                        <label>Difficulty</label>
+                        <select id="prop_difficulty">
+                            ${['peaceful', 'easy', 'normal', 'hard'].map(d => 
+                                `<option value="${d}" ${properties['difficulty'] === d ? 'selected' : ''}>${d}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Gamemode</label>
+                        <select id="prop_gamemode">
+                            ${['survival', 'creative', 'adventure', 'spectator'].map(g => 
+                                `<option value="${g}" ${properties['gamemode'] === g ? 'selected' : ''}>${g}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label>PVP</label>
+                        <select id="prop_pvp">
+                            <option value="true" ${properties['pvp'] !== 'false' ? 'selected' : ''}>Enabled</option>
+                            <option value="false" ${properties['pvp'] === 'false' ? 'selected' : ''}>Disabled</option>
+                        </select>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        async function saveServerProperties() {
+            if (!currentServer) return;
+            
+            const properties = {
+                'server-port': document.getElementById('prop_server-port')?.value,
+                'max-players': document.getElementById('prop_max-players')?.value,
+                'motd': document.getElementById('prop_motd')?.value,
+                'difficulty': document.getElementById('prop_difficulty')?.value,
+                'gamemode': document.getElementById('prop_gamemode')?.value,
+                'pvp': document.getElementById('prop_pvp')?.value
+            };
+            
+            let content = '#Minecraft server properties\n';
+            for (const [key, value] of Object.entries(properties)) {
+                if (value) content += `${key}=${value}\n`;
+            }
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: 'server.properties', content })
+                });
+                
+                if (response.ok) {
+                    showToast('Server properties saved!', 'success');
+                }
+            } catch (error) {
+                showToast('Failed to save properties', 'error');
+            }
+        }
+
+        function reloadServerProperties() {
+            loadServerSettings();
+        }
+
+        function applyServerSettings() {
+            showToast('Settings applied. Restart server to take effect.', 'success');
+        }
+
+        // Plugins
+        async function loadPlugins() {
+            if (!currentServer) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/files?path=plugins`);
+                const files = await response.json();
+                
+                const pluginsGrid = document.getElementById('pluginsGrid');
+                const plugins = files.filter(f => f.extension === '.jar');
+                
+                if (plugins.length === 0) {
+                    pluginsGrid.innerHTML = '<div class="loading">No plugins installed</div>';
+                    return;
+                }
+                
+                pluginsGrid.innerHTML = plugins.map(plugin => `
+                    <div class="plugin-card">
+                        <div class="plugin-name">${plugin.name.replace('.jar', '')}</div>
+                        <div class="plugin-version">Size: ${(plugin.size / 1024).toFixed(2)} KB</div>
+                        <div class="plugin-actions">
+                            <button class="btn btn-sm btn-danger" onclick="deletePlugin('${plugin.name}')">Delete</button>
+                            <button class="btn btn-sm" onclick="downloadPlugin('${plugin.name}')">Download</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load plugins:', error);
+            }
+        }
+
+        function uploadPlugin() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.jar';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const formData = new FormData();
+                formData.append('files', file);
+                
+                try {
+                    const response = await fetch(`/api/server/upload-multiple/${currentServer}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        showToast('Plugin uploaded!', 'success');
+                        loadPlugins();
+                    }
+                } catch (error) {
+                    showToast('Upload failed', 'error');
+                }
+            };
+            input.click();
+        }
+
+        async function deletePlugin(pluginName) {
+            if (!confirm(`Delete ${pluginName}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: `plugins/${pluginName}` })
+                });
+                
+                if (response.ok) {
+                    showToast('Plugin deleted', 'success');
+                    loadPlugins();
+                }
+            } catch (error) {
+                showToast('Delete failed', 'error');
+            }
+        }
+
+        function downloadPlugin(pluginName) {
+            window.location.href = `/api/server/${currentServer}/file?path=plugins/${pluginName}`;
+        }
+
+        // Backup Functions
+        function createBackup() {
+            if (!currentServer) return;
+            window.location.href = `/api/server/${currentServer}/download`;
+            showToast('Creating backup...', 'info');
+        }
+
+        function downloadServerBackup() {
+            if (!currentServer) return;
+            window.location.href = `/api/server/${currentServer}/download`;
+        }
+
+        // Create Server
+        function showCreateServerModal() {
+            document.getElementById('createServerModal').classList.add('active');
+        }
+
+        async function createServer() {
+            const serverName = document.getElementById('newServerName').value.trim();
+            const files = document.getElementById('serverUploadFile').files;
+            
+            if (!serverName) {
+                alert('Please enter a server name');
+                return;
+            }
+            
+            if (files.length > 0) {
+                const formData = new FormData();
+                for (let file of files) {
+                    formData.append('files', file);
+                }
+                
+                try {
+                    const response = await fetch(`/api/server/upload-multiple/${serverName}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        alert(`Server "${serverName}" created!`);
+                        closeModal('createServerModal');
+                        loadServers();
+                    }
+                } catch (error) {
+                    alert('Failed to create server');
+                }
+            } else {
+                await fetch(`/api/server/upload-multiple/${serverName}`, { method: 'POST', body: new FormData() });
+                alert(`Empty server "${serverName}" created!`);
+                closeModal('createServerModal');
+                loadServers();
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // WebSocket listeners
+        socket.on('console', (data) => {
+            addToConsole(data);
+        });
+        
+        socket.on('console-history', (history) => {
+            consoleBuffer = history;
+            updateConsoleDisplay();
+        });
+        
+        socket.on('status', (status) => {
+            updateServerStatus(status);
+        });
+
+        // Initialize
+        loadServers();
+        
+        setInterval(() => {
+            if (currentServer) {
+                fetch(`/api/server/${currentServer}/status`).then(res => res.json()).then(data => {
+                    updateServerStatus(data.status);
+                    if (data.uptime) {
+                        const hours = Math.floor(data.uptime / 3600000);
+                        const minutes = Math.floor((data.uptime % 3600000) / 60000);
+                        document.getElementById('uptimeDisplay').textContent = `${hours}h ${minutes}m`;
+                    }
+                }).catch(console.error);
+            }
+        }, 5000);
+        
+        console.log('%c💡 Tip: Press Ctrl+S to save files while editing!', 'color: #4caf50; font-size: 12px;');
+    </script>
+</body>
+</html>
