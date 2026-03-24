@@ -1,21 +1,1153 @@
-<!-- Network Info Card -->
-<div class="card" id="networkInfo" style="margin-bottom: 20px;">
-    <h3>🌐 Network Information</h3>
-    <div class="settings-grid">
-        <div class="setting-group">
-            <label>Local IP Address</label>
-            <div id="localIP" style="font-family: monospace; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px;">Loading...</div>
-            <small>For players on same WiFi network</small>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Minecraft Server Panel - Global Hosting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .server-selector {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-list {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .server-tab {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .server-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .server-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+
+        .server-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .server-status.online {
+            background: #4caf50;
+            box-shadow: 0 0 5px #4caf50;
+            animation: pulse 1.5s infinite;
+        }
+
+        .server-status.offline {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .create-server-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .create-server-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .main-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+        }
+
+        .main-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .main-tab:hover {
+            color: white;
+        }
+
+        .main-tab.active {
+            color: white;
+        }
+
+        .main-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Network Info Card */
+        .network-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .network-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .network-box .label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .network-box .value {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            word-break: break-all;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .status-active {
+            color: #4caf50;
+        }
+
+        .status-inactive {
+            color: #f44336;
+        }
+
+        .copy-btn {
+            background: rgba(102, 126, 234, 0.3);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(102, 126, 234, 0.6);
+        }
+
+        /* Console */
+        .console-container {
+            background: #0a0e27;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .console-header {
+            background: #1a1f3e;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a2f4e;
+        }
+
+        .console-output {
+            background: #0a0e27;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .console-input {
+            background: #1a1f3e;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #2a2f4e;
+        }
+
+        .console-input input {
+            flex: 1;
+            background: #0a0e27;
+            border: 1px solid #2a2f4e;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
+        .console-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* File Browser */
+        .file-browser {
+            display: flex;
+            gap: 20px;
+            min-height: 500px;
+        }
+
+        .file-tree {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .file-tree-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 2px 0;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .file-tree-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-tree-item.directory {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .file-content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-toolbar {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .file-editor {
+            flex: 1;
+            background: #0a0e27;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 15px;
+            border: none;
+            resize: vertical;
+            outline: none;
+            min-height: 400px;
+        }
+
+        /* Settings Grid */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .setting-group {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .setting-group input, .setting-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: white;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1f3e;
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status-badge.online {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .status-badge.offline {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.6;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .file-browser {
+                flex-direction: column;
+            }
+            .file-tree {
+                width: 100%;
+                max-height: 200px;
+            }
+            .network-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 Minecraft Server Panel</h1>
+        <p>Global Hosting • One-Click Tunneling • Full Server Management</p>
+    </div>
+
+    <div class="container">
+        <!-- Server Selector -->
+        <div class="server-selector">
+            <div class="server-list" id="serverList">
+                <div class="loading">Loading servers...</div>
+            </div>
+            <button class="create-server-btn" onclick="showCreateServerModal()">+ Create New Server</button>
         </div>
-        <div class="setting-group">
-            <label>Public Address</label>
-            <div id="publicAddress" style="font-family: monospace; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px;">Not active</div>
-            <small>For players anywhere in the world</small>
+
+        <!-- Network Info Card -->
+        <div class="card">
+            <h3>🌐 Network & Global Access</h3>
+            <div class="network-grid">
+                <div class="network-box">
+                    <div class="label">📍 Local Network Address</div>
+                    <div class="value" id="localIP">Loading...</div>
+                    <button class="copy-btn" onclick="copyToClipboard('localIP')">📋 Copy</button>
+                    <div class="label" style="margin-top: 8px; font-size: 10px;">For players on same WiFi</div>
+                </div>
+                <div class="network-box">
+                    <div class="label">🌍 Global Public Address</div>
+                    <div class="value" id="publicAddress">Not active</div>
+                    <button class="copy-btn" onclick="copyToClipboard('publicAddress')">📋 Copy</button>
+                    <div class="label" style="margin-top: 8px; font-size: 10px;">For players anywhere in the world</div>
+                </div>
+                <div class="network-box">
+                    <div class="label">🔌 Tunnel Status</div>
+                    <div class="value" id="tunnelStatus">⭕ Inactive</div>
+                    <button id="toggleTunnelBtn" class="btn btn-primary" style="margin-top: 8px; width: 100%;" onclick="toggleTunnel()">🌍 Start Global Tunnel</button>
+                </div>
+            </div>
         </div>
-        <div class="setting-group">
-            <label>Tunnel Status</label>
-            <div id="tunnelStatus" style="padding: 8px; border-radius: 5px;">Inactive</div>
-            <button id="toggleTunnelBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="toggleTunnel()">🌍 Start Global Tunnel</button>
+
+        <!-- Main Tabs -->
+        <div class="main-tabs" id="mainTabs" style="display: none;">
+            <button class="main-tab active" data-tab="console">💻 Console</button>
+            <button class="main-tab" data-tab="files">📁 File Manager</button>
+            <button class="main-tab" data-tab="settings">⚙️ Server Settings</button>
+            <button class="main-tab" data-tab="plugins">🔌 Plugins</button>
+            <button class="main-tab" data-tab="backup">💾 Backup</button>
+        </div>
+
+        <!-- Console Tab -->
+        <div class="tab-content active" id="tab-console">
+            <div class="card">
+                <div class="console-container">
+                    <div class="console-header">
+                        <span>📟 Server Console</span>
+                        <div>
+                            <button class="btn btn-sm" onclick="clearConsole()">Clear</button>
+                            <button class="btn btn-sm" onclick="downloadConsoleLog()">Download Log</button>
+                        </div>
+                    </div>
+                    <div class="console-output" id="consoleOutput">
+                        <span style="color: #888;">Select a server to view console...</span>
+                    </div>
+                    <div class="console-input">
+                        <input type="text" id="commandInput" placeholder="Type Minecraft command..." onkeypress="handleCommandKeypress(event)">
+                        <button class="btn btn-primary" onclick="sendCommand()">Send</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🎮 Server Control</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-success" onclick="startServer()">▶ Start Server</button>
+                    <button class="btn btn-danger" onclick="stopServer()">⏹ Stop Server</button>
+                    <button class="btn btn-warning" onclick="restartServer()">🔄 Restart Server</button>
+                    <div style="flex: 1"></div>
+                    <div id="serverStats">
+                        <span class="status-badge offline">● Offline</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div><strong>RAM:</strong> <span id="ramDisplay">-</span> MB</div>
+                    <div><strong>Uptime:</strong> <span id="uptimeDisplay">-</span></div>
+                    <div><strong>JAR:</strong> <span id="jarDisplay">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Manager Tab -->
+        <div class="tab-content" id="tab-files">
+            <div class="card">
+                <div class="file-browser">
+                    <div class="file-tree" id="fileTree">
+                        <div class="loading">Select a server to browse files...</div>
+                    </div>
+                    <div class="file-content">
+                        <div class="file-toolbar">
+                            <button class="btn btn-sm" onclick="uploadFile()">📤 Upload</button>
+                            <button class="btn btn-sm" onclick="createFolder()">📁 New Folder</button>
+                            <button class="btn btn-sm" onclick="refreshFileList()">🔄 Refresh</button>
+                            <button class="btn btn-sm btn-primary" id="saveFileBtn" onclick="saveCurrentFile()" style="display: none;">💾 Save (Ctrl+S)</button>
+                        </div>
+                        <textarea class="file-editor" id="fileEditor" placeholder="Select a file to edit..." style="display: none;"></textarea>
+                        <div id="filePreview" style="display: flex; justify-content: center; align-items: center; min-height: 400px; opacity: 0.6;">
+                            📁 Select a file to view/edit
+                        </div>
+                        <div id="fileStatus" style="padding: 8px; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.1);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="tab-settings">
+            <div class="card">
+                <h3>⚙️ Server Properties</h3>
+                <div class="settings-grid" id="settingsGrid">
+                    <div class="loading">Loading server settings...</div>
+                </div>
+                <button class="btn btn-primary" onclick="saveServerProperties()" style="margin-top: 15px;">💾 Save Properties</button>
+            </div>
+            <div class="card">
+                <h3>⚡ Performance Settings</h3>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label>RAM (MB)</label>
+                        <input type="number" id="ramSetting" value="1024" min="512" max="8192" step="256">
+                    </div>
+                    <div class="setting-group">
+                        <label>Server JAR</label>
+                        <select id="jarSelect"></select>
+                    </div>
+                    <div class="setting-group">
+                        <label>Java Arguments</label>
+                        <input type="text" id="javaArgs" placeholder="-XX:+UseG1GC">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="applyServerSettings()">Apply Settings</button>
+            </div>
+        </div>
+
+        <!-- Plugins Tab -->
+        <div class="tab-content" id="tab-plugins">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <h3>🔌 Plugins</h3>
+                    <button class="btn btn-primary" onclick="uploadPlugin()">📤 Upload Plugin</button>
+                </div>
+                <div id="pluginsGrid" class="settings-grid">
+                    <div class="loading">Select a server to view plugins...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup Tab -->
+        <div class="tab-content" id="tab-backup">
+            <div class="card">
+                <h3>💾 Backup & Restore</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="createBackup()">📦 Create Backup</button>
+                    <button class="btn btn-success" onclick="downloadServerBackup()">⬇️ Download Backup</button>
+                    <input type="file" id="restoreFile" style="display: none;" accept=".zip">
+                    <button class="btn btn-warning" onclick="document.getElementById('restoreFile').click()">🔄 Restore Backup</button>
+                </div>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Create Server Modal -->
+    <div id="createServerModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3>Create New Server</h3>
+                <button onclick="closeModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="setting-group">
+                <label>Server Name</label>
+                <input type="text" id="newServerName" placeholder="my-server">
+            </div>
+            <div class="setting-group" style="margin-top: 15px;">
+                <label>Upload Files (ZIP or individual)</label>
+                <input type="file" id="serverUploadFile" multiple>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createServer()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentServer = null;
+        let currentFilePath = null;
+        let isFileModified = false;
+        let consoleBuffer = [];
+        let networkInterval = null;
+
+        // Tab switching
+        document.querySelectorAll('.main-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+                
+                if (tabId === 'files' && currentServer) loadFileTree();
+                if (tabId === 'plugins' && currentServer) loadPlugins();
+                if (tabId === 'settings' && currentServer) loadServerSettings();
+            });
+        });
+
+        // Network Functions
+        async function loadNetworkInfo() {
+            try {
+                const response = await fetch('/api/network/info');
+                const data = await response.json();
+                
+                document.getElementById('localIP').innerHTML = `${data.localIP}:${data.minecraftPort || 25531}`;
+                
+                if (data.publicAddress) {
+                    document.getElementById('publicAddress').innerHTML = data.publicAddress;
+                    document.getElementById('tunnelStatus').innerHTML = '✅ Active';
+                    document.getElementById('tunnelStatus').style.color = '#4caf50';
+                    const btn = document.getElementById('toggleTunnelBtn');
+                    btn.innerHTML = '🔴 Stop Tunnel';
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-danger');
+                } else {
+                    document.getElementById('publicAddress').innerHTML = 'Not active';
+                    document.getElementById('tunnelStatus').innerHTML = '⭕ Inactive';
+                    document.getElementById('tunnelStatus').style.color = '#f44336';
+                    const btn = document.getElementById('toggleTunnelBtn');
+                    btn.innerHTML = '🌍 Start Global Tunnel';
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-primary');
+                }
+            } catch (error) {
+                console.error('Network info error:', error);
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            if (text && text !== 'Not active' && text !== 'Loading...') {
+                navigator.clipboard.writeText(text);
+                showToast(`Copied: ${text}`, 'success');
+            } else {
+                showToast('Nothing to copy', 'error');
+            }
+        }
+
+        async function toggleTunnel() {
+            const btn = document.getElementById('toggleTunnelBtn');
+            const isActive = document.getElementById('publicAddress').innerHTML !== 'Not active';
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Processing...';
+            btn.disabled = true;
+            
+            try {
+                const endpoint = isActive ? '/api/network/stop-tunnel' : '/api/network/start-tunnel';
+                const response = await fetch(endpoint, { method: isActive ? 'DELETE' : 'POST' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    await loadNetworkInfo();
+                    if (!isActive && data.address) {
+                        showToast(`Server now accessible at: ${data.address}`, 'success');
+                    } else if (isActive) {
+                        showToast('Tunnel stopped', 'info');
+                    }
+                } else {
+                    showToast('Failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function showToast(message, type) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                document.body.appendChild(toast);
+            }
+            toast.style.backgroundColor = type === 'success' ? '#4caf50' : (type === 'error' ? '#f44336' : '#667eea');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        // Server Management
+        async function loadServers() {
+            try {
+                const response = await fetch('/api/servers');
+                const servers = await response.json();
+                const container = document.getElementById('serverList');
+                
+                if (servers.length === 0) {
+                    container.innerHTML = '<div class="loading">No servers found. Create one!</div>';
+                    document.getElementById('mainTabs').style.display = 'none';
+                    return;
+                }
+                
+                document.getElementById('mainTabs').style.display = 'flex';
+                container.innerHTML = servers.map(s => `
+                    <div class="server-tab ${currentServer === s.name ? 'active' : ''}" onclick="selectServer('${s.name}')">
+                        <span class="server-status ${s.status}"></span>
+                        <span>${s.name}</span>
+                        ${s.status === 'running' ? '<span style="font-size: 10px;">● Running</span>' : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function selectServer(name) {
+            currentServer = name;
+            loadServers();
+            
+            const response = await fetch(`/api/server/${name}`);
+            const server = await response.json();
+            
+            document.getElementById('ramDisplay').textContent = server.ram || '-';
+            document.getElementById('jarDisplay').textContent = server.jarFiles?.[0] || '-';
+            
+            const jarSelect = document.getElementById('jarSelect');
+            if (server.jarFiles) {
+                jarSelect.innerHTML = server.jarFiles.map(j => `<option value="${j}">${j}</option>`).join('');
+            }
+            
+            socket.emit('subscribe', name);
+            
+            const consoleRes = await fetch(`/api/server/${name}/console`);
+            const consoleData = await consoleRes.json();
+            if (consoleData.console) {
+                consoleBuffer = consoleData.console;
+                updateConsoleDisplay();
+            }
+            
+            updateServerStatus(server.status);
+        }
+
+        function updateServerStatus(status) {
+            const elem = document.getElementById('serverStats').querySelector('.status-badge');
+            if (status === 'running') {
+                elem.className = 'status-badge online';
+                elem.innerHTML = '● Online';
+            } else {
+                elem.className = 'status-badge offline';
+                elem.innerHTML = '● Offline';
+            }
+        }
+
+        async function startServer() {
+            if (!currentServer) return;
+            const ram = document.getElementById('ramSetting').value;
+            const jarFile = document.getElementById('jarSelect').value;
+            const javaArgs = document.getElementById('javaArgs').value;
+            
+            try {
+                const response = await fetch(`/api/server/${currentServer}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ram, jarFile, javaArgs })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addToConsole(`§a[Panel] Server starting...\n`);
+                    updateServerStatus('running');
+                } else {
+                    addToConsole(`§c[Panel] Failed: ${data.error}\n`);
+                }
+            } catch (error) {
+                addToConsole(`§c[Panel] Error: ${error.message}\n`);
+            }
+        }
+
+        async function stopServer() {
+            if (!currentServer) return;
+            try {
+                await fetch(`/api/server/${currentServer}/stop`, { method: 'POST' });
+                addToConsole(`§e[Panel] Stopping server...\n`);
+            } catch (error) {
+                addToConsole(`§c[Panel] Error: ${error.message}\n`);
+            }
+        }
+
+        function restartServer() {
+            stopServer();
+            setTimeout(() => startServer(), 5000);
+        }
+
+        function sendCommand() {
+            const input = document.getElementById('commandInput');
+            const cmd = input.value.trim();
+            if (!cmd || !currentServer) return;
+            fetch(`/api/server/${currentServer}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            });
+            input.value = '';
+        }
+
+        function handleCommandKeypress(e) { if (e.key === 'Enter') sendCommand(); }
+
+        function addToConsole(text) {
+            consoleBuffer.push(text);
+            updateConsoleDisplay();
+        }
+
+        function updateConsoleDisplay() {
+            const consoleDiv = document.getElementById('consoleOutput');
+            consoleDiv.innerHTML = consoleBuffer.join('').replace(/\x1b\[[0-9;]*m/g, '') + '<span style="animation: blink 1s infinite;">_</span>';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function clearConsole() { consoleBuffer = []; updateConsoleDisplay(); }
+        function downloadConsoleLog() {
+            const blob = new Blob([consoleBuffer.join('')], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${currentServer}_console.log`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // File Manager
+        async function loadFileTree(path = '') {
+            if (!currentServer) return;
+            try {
+                const response = await fetch(`/api/server/${currentServer}/files?path=${encodeURIComponent(path)}`);
+                const files = await response.json();
+                const tree = document.getElementById('fileTree');
+                tree.innerHTML = `<div class="file-tree-item directory" onclick="loadFileTree('')">📁 /</div>` + 
+                    files.map(f => `<div class="file-tree-item ${f.isDirectory ? 'directory' : ''}" onclick="${f.isDirectory ? `loadFileTree('${f.path}')` : `editFile('${f.path}')`}">
+                        ${f.isDirectory ? '📁' : '📄'} ${f.name}
+                    </div>`).join('');
+            } catch (error) { console.error(error); }
+        }
+
+        async function editFile(filePath) {
+            if (!currentServer) return;
+            if (isFileModified && !confirm('Unsaved changes. Continue?')) return;
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file?path=${encodeURIComponent(filePath)}`);
+                const data = await response.json();
+                if (data.type === 'text') {
+                    currentFilePath = filePath;
+                    document.getElementById('fileEditor').style.display = 'block';
+                    document.getElementById('filePreview').style.display = 'none';
+                    document.getElementById('saveFileBtn').style.display = 'inline-block';
+                    document.getElementById('fileEditor').value = data.content;
+                    document.getElementById('fileStatus').innerHTML = `✏️ Editing: ${filePath}`;
+                    isFileModified = false;
+                    document.getElementById('fileEditor').onkeydown = (e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                            e.preventDefault();
+                            saveCurrentFile();
+                        }
+                        isFileModified = true;
+                        document.getElementById('fileStatus').innerHTML = `✏️ Editing: ${filePath} • Modified`;
+                    };
+                } else {
+                    alert('Binary file - cannot edit');
+                }
+            } catch (error) { alert('Error: ' + error.message); }
+        }
+
+        async function saveCurrentFile() {
+            if (!currentServer || !currentFilePath) return;
+            const content = document.getElementById('fileEditor').value;
+            try {
+                const response = await fetch(`/api/server/${currentServer}/file`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentFilePath, content })
+                });
+                if (response.ok) {
+                    isFileModified = false;
+                    document.getElementById('fileStatus').innerHTML = `✅ Saved: ${currentFilePath}`;
+                    showToast('File saved!', 'success');
+                } else throw new Error('Save failed');
+            } catch (error) { showToast('Save failed', 'error'); }
+        }
+
+        function uploadFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.onchange = async (e) => {
+                const fd = new FormData();
+                [...e.target.files].forEach(f => fd.append('files', f));
+                await fetch(`/api/server/upload-multiple/${currentServer}`, { method: 'POST', body: fd });
+                loadFileTree();
+                showToast('Files uploaded', 'success');
+            };
+            input.click();
+        }
+
+        function createFolder() {
+            const name = prompt('Folder name:');
+            if (!name) return;
+            fetch(`/api/server/${currentServer}/folder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: '', folderName: name })
+            }).then(() => loadFileTree());
+        }
+
+        function refreshFileList() { loadFileTree(); }
+
+        // Settings
+        async function loadServerSettings() {
+            if (!currentServer) return;
+            const response = await fetch(`/api/server/${currentServer}`);
+            const server = await response.json();
+            const props = server.properties || {};
+            document.getElementById('settingsGrid').innerHTML = `
+                <div class="setting-group"><label>Port</label><input id="prop_port" value="${props['server-port'] || '25531'}"></div>
+                <div class="setting-group"><label>Max Players</label><input id="prop_max" value="${props['max-players'] || '20'}"></div>
+                <div class="setting-group"><label>MOTD</label><input id="prop_motd" value="${props['motd'] || 'A Minecraft Server'}"></div>
+                <div class="setting-group"><label>Difficulty</label><select id="prop_diff">${['peaceful','easy','normal','hard'].map(d => `<option ${props.difficulty===d?'selected':''}>${d}</option>`).join('')}</select></div>
+                <div class="setting-group"><label>Gamemode</label><select id="prop_gm">${['survival','creative','adventure','spectator'].map(g => `<option ${props.gamemode===g?'selected':''}>${g}</option>`).join('')}</select></div>
+                <div class="setting-group"><label>PVP</label><select id="prop_pvp"><option ${props.pvp!=='false'?'selected':''}>true</option><option ${props.pvp==='false'?'selected':''}>false</option></select></div>
+            `;
+        }
+
+        async function saveServerProperties() {
+            if (!currentServer) return;
+            const content = `#Minecraft server properties\nserver-port=${document.getElementById('prop_port').value}\nmax-players=${document.getElementById('prop_max').value}\nmotd=${document.getElementById('prop_motd').value}\ndifficulty=${document.getElementById('prop_diff').value}\ngamemode=${document.getElementById('prop_gm').value}\npvp=${document.getElementById('prop_pvp').value}`;
+            await fetch(`/api/server/${currentServer}/file`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: 'server.properties', content })
+            });
+            showToast('Properties saved!', 'success');
+        }
+
+        function applyServerSettings() { showToast('Settings saved. Restart server to apply.', 'success'); }
+
+        // Plugins
+        async function loadPlugins() {
+            if (!currentServer) return;
+            const res = await fetch(`/api/server/${currentServer}/files?path=plugins`);
+            const files = await res.json();
+            const plugins = files.filter(f => f.extension === '.jar');
+            document.getElementById('pluginsGrid').innerHTML = plugins.length ? plugins.map(p => `
+                <div class="setting-group"><strong>${p.name}</strong><br>${(p.size/1024).toFixed(1)} KB<br>
+                <button class="btn btn-sm btn-danger" onclick="deletePlugin('${p.name}')">Delete</button>
+                <button class="btn btn-sm" onclick="downloadPlugin('${p.name}')">Download</button></div>
+            `).join('') : '<div class="loading">No plugins</div>';
+        }
+
+        function uploadPlugin() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.jar';
+            input.onchange = async (e) => {
+                const fd = new FormData();
+                fd.append('files', e.target.files[0]);
+                await fetch(`/api/server/upload-multiple/${currentServer}`, { method: 'POST', body: fd });
+                loadPlugins();
+                showToast('Plugin uploaded', 'success');
+            };
+            input.click();
+        }
+
+        async function deletePlugin(name) {
+            if (!confirm(`Delete ${name}?`)) return;
+            await fetch(`/api/server/${currentServer}/file`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: `plugins/${name}` })
+            });
+            loadPlugins();
+        }
+
+        function downloadPlugin(name) { window.location.href = `/api/server/${currentServer}/file?path=plugins/${name}`; }
+
+        // Backup
+        function createBackup() { window.location.href = `/api/server/${currentServer}/download`; showToast('Downloading backup...', 'info'); }
+        function downloadServerBackup() { window.location.href = `/api/server/${currentServer}/download`; }
+
+        // Create Server
+        function showCreateServerModal() { document.getElementById('createServerModal').classList.add('active'); }
+        function closeModal() { document.getElementById('createServerModal').classList.remove('active'); }
+
+        async function createServer() {
+            const name = document.getElementById('newServerName').value.trim();
+            if (!name) { alert('Enter server name'); return; }
+            const files = document.getElementById('serverUploadFile').files;
+            if (files.length) {
+                const fd = new FormData();
+                [...files].forEach(f => fd.append('files', f));
+                await fetch(`/api/server/upload-multiple/${name}`, { method: 'POST', body: fd });
+            } else {
+                await fetch(`/api/server/upload-multiple/${name}`, { method: 'POST', body: new FormData() });
+            }
+            closeModal();
+            loadServers();
+            showToast(`Server "${name}" created!`, 'success');
+        }
+
+        // WebSocket
+        socket.on('console', (data) => addToConsole(data));
+        socket.on('status', (status) => updateServerStatus(status));
+
+        // Auto-refresh
+        setInterval(() => {
+            if (currentServer) {
+                fetch(`/api/server/${currentServer}/status`).then(r => r.json()).then(d => {
+                    updateServerStatus(d.status);
+                    if (d.uptime) {
+                        const h = Math.floor(d.uptime / 3600000);
+                        const m = Math.floor((d.uptime % 3600000) / 60000);
+                        document.getElementById('uptimeDisplay').textContent = `${h}h ${m}m`;
+                    }
+                }).catch(() => {});
+            }
+        }, 5000);
+
+        setInterval(loadNetworkInfo, 5000);
+
+        // Initial load
+        loadServers();
+        loadNetworkInfo();
+    </script>
+</body>
+</html>
