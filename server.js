@@ -7,6 +7,7 @@ const path = require('path');
 const multer = require('multer');
 const archiver = require('archiver');
 const unzipper = require('unzipper');
+const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
@@ -38,11 +39,138 @@ const upload = multer({
     }
 });
 
-// Store active servers with more details
+// Store active servers
 const servers = new Map();
+let activeTunnel = null;
+let publicAddress = null;
+
+// Helper: Get local IP
+function getLocalIP() {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+}
+
+// Helper: Start playit.gg tunnel
+async function startPlayitTunnel(port) {
+    return new Promise((resolve, reject) => {
+        // Check if playit is installed
+        const playitPath = '/data/data/com.termux/files/usr/bin/playit';
+        const kaliPlayitPath = '/data/data/com.termux/files/usr/bin/start-kali';
+        
+        let playitCmd;
+        if (fs.existsSync(playitPath)) {
+            playitCmd = spawn('playit', [], { shell: true });
+        } else if (fs.existsSync(kaliPlayitPath)) {
+            playitCmd = spawn('start-kali', ['-c', 'playit'], { shell: true });
+        } else {
+            resolve({ success: false, error: 'playit.gg not installed' });
+            return;
+        }
+        
+        let output = '';
+        let address = '';
+        
+        playitCmd.stdout.on('data', (data) => {
+            output += data.toString();
+            // Parse playit output for URL
+            const match = output.match(/(https?:\/\/[^\s]+\.playit\.gg)/);
+            const tcpMatch = output.match(/([a-z0-9-]+\.playit\.gg):(\d+)/);
+            if (match && !address) {
+                address = match[1];
+                resolve({ success: true, address: address, type: 'http' });
+            } else if (tcpMatch && !address) {
+                address = `${tcpMatch[1]}:${tcpMatch[2]}`;
+                resolve({ success: true, address: address, type: 'tcp' });
+            }
+        });
+        
+        playitCmd.stderr.on('data', (data) => {
+            console.error('playit error:', data.toString());
+        });
+        
+        playitCmd.on('error', (err) => {
+            reject(err);
+        });
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+            if (!address) {
+                resolve({ success: false, error: 'Timeout waiting for tunnel' });
+            }
+        }, 30000);
+        
+        activeTunnel = playitCmd;
+    });
+}
+
+// API: Get network info (local IP and tunnel status)
+app.get('/api/network/info', (req, res) => {
+    res.json({
+        localIP: getLocalIP(),
+        publicAddress: publicAddress,
+        tunnelActive: activeTunnel !== null,
+        minecraftPort: 25531,
+        webPort: 3000
+    });
+});
+
+// API: Start tunnel
+app.post('/api/network/start-tunnel', async (req, res) => {
+    if (activeTunnel) {
+        return res.json({ success: true, message: 'Tunnel already active', address: publicAddress });
+    }
+    
+    try {
+        const result = await startPlayitTunnel(25531);
+        if (result.success) {
+            publicAddress = result.address;
+            res.json({ success: true, address: publicAddress, type: result.type });
+        } else {
+            res.json({ success: false, error: result.error });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API: Stop tunnel
+app.post('/api/network/stop-tunnel', (req, res) => {
+    if (activeTunnel) {
+        activeTunnel.kill();
+        activeTunnel = null;
+        publicAddress = null;
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: 'No active tunnel' });
+    }
+});
+
+// API: Get server public address
+app.get('/api/server/:name/address', (req, res) => {
+    const { name } = req.params;
+    const localIP = getLocalIP();
+    const serverPort = 25531; // Your configured port
+    
+    res.json({
+        serverName: name,
+        localAddress: `${localIP}:${serverPort}`,
+        publicAddress: publicAddress || null,
+        tunnelActive: activeTunnel !== null
+    });
+});
 
 // Middleware
 app.use(express.static('public'));
+
+// Store active servers
+const serversMap = new Map();
 
 // ==================== API ENDPOINTS ====================
 
@@ -79,6 +207,35 @@ app.post('/api/server/upload/:serverName', upload.single('file'), async (req, re
     }
 });
 
+// Upload multiple files
+app.post('/api/server/upload-multiple/:serverName', upload.array('files', 50), async (req, res) => {
+    const { serverName } = req.params;
+    const uploadedFiles = req.files;
+    
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+    }
+    
+    const serverPath = path.join(__dirname, 'servers', serverName);
+    await fs.ensureDir(serverPath);
+    
+    try {
+        const results = [];
+        let totalSize = 0;
+        
+        for (const file of uploadedFiles) {
+            const targetPath = path.join(serverPath, file.originalname);
+            await fs.move(file.path, targetPath, { overwrite: true });
+            results.push(file.originalname);
+            totalSize += file.size;
+        }
+        
+        res.json({ success: true, message: `${results.length} files uploaded`, files: results });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // List all servers
 app.get('/api/servers', async (req, res) => {
     const serversPath = path.join(__dirname, 'servers');
@@ -104,7 +261,7 @@ app.get('/api/servers', async (req, res) => {
                     if (fileStat.isFile()) totalSize += fileStat.size;
                 }
                 
-                const runningServer = servers.get(folder);
+                const runningServer = serversMap.get(folder);
                 serversList.push({
                     name: folder,
                     jarFiles: jarFiles,
@@ -137,7 +294,6 @@ app.get('/api/server/:name', async (req, res) => {
         const files = await fs.readdir(serverPath);
         const jarFiles = files.filter(f => f.endsWith('.jar'));
         
-        // Read server.properties
         let properties = {};
         const propsPath = path.join(serverPath, 'server.properties');
         if (await fs.pathExists(propsPath)) {
@@ -150,7 +306,7 @@ app.get('/api/server/:name', async (req, res) => {
             });
         }
         
-        const runningServer = servers.get(name);
+        const runningServer = serversMap.get(name);
         res.json({
             name: name,
             jarFiles: jarFiles,
@@ -176,7 +332,7 @@ app.post('/api/server/:name/start', async (req, res) => {
             return res.status(404).json({ error: 'Server not found' });
         }
         
-        if (servers.has(name) && servers.get(name).status === 'running') {
+        if (serversMap.has(name) && serversMap.get(name).status === 'running') {
             return res.status(400).json({ error: 'Server already running' });
         }
         
@@ -195,7 +351,7 @@ app.post('/api/server/:name/start', async (req, res) => {
             return res.status(404).json({ error: `JAR file ${selectedJar} not found` });
         }
         
-        // Auto-accept EULA if not present
+        // Auto-accept EULA
         const eulaPath = path.join(serverPath, 'eula.txt');
         if (!await fs.pathExists(eulaPath)) {
             await fs.writeFile(eulaPath, 'eula=true\n');
@@ -207,42 +363,32 @@ app.post('/api/server/:name/start', async (req, res) => {
         }
         
         const ramValue = ram || 1024;
+        
+        // Build Java arguments
         const javaCmd = [
             `-Xmx${ramValue}M`,
             `-Xms${Math.floor(ramValue/2)}M`,
-            '-XX:+UseG1GC',
-            '-XX:+ParallelRefProcEnabled',
-            '-XX:MaxGCPauseMillis=200',
-            '-XX:+UnlockExperimentalVMOptions',
-            '-XX:+DisableExplicitGC',
-            '-XX:+AlwaysPreTouch',
-            '-XX:G1NewSizePercent=30',
-            '-XX:G1MaxNewSizePercent=40',
-            '-XX:G1HeapRegionSize=8M',
-            '-XX:G1ReservePercent=20',
-            '-XX:G1HeapWastePercent=5',
-            '-XX:G1MixedGCCountTarget=4',
-            '-XX:InitiatingHeapOccupancyPercent=15',
-            '-XX:G1MixedGCLiveThresholdPercent=90',
-            '-XX:G1RSetUpdatingPauseTimePercent=5',
-            '-XX:SurvivorRatio=32',
-            '-XX:+PerfDisableSharedMem',
-            '-XX:MaxTenuringThreshold=1',
-            ...(javaArgs ? javaArgs.split(' ') : []),
+            '-Dorg.jline.terminal.dumb=true',
+            '-Djna.nosys=true',
             '-jar',
             selectedJar,
             'nogui'
         ];
         
-        console.log(`Starting ${name} with ${ramValue}MB RAM`);
+        if (javaArgs && javaArgs.trim()) {
+            const customArgs = javaArgs.trim().split(' ');
+            javaCmd.unshift(...customArgs);
+        }
+        
+        console.log(`Starting ${name} with: java ${javaCmd.join(' ')}`);
         
         const java = spawn('java', javaCmd, {
             cwd: serverPath,
             shell: true,
-            env: { ...process.env, TERM: 'dumb' } // Prevent ANSI escape issues
+            env: { ...process.env, LD_LIBRARY_PATH: '/data/data/com.termux/files/usr/lib' }
         });
         
-        servers.set(name, {
+        serversMap.set(name, {
             process: java,
             status: 'running',
             startTime: Date.now(),
@@ -252,39 +398,46 @@ app.post('/api/server/:name/start', async (req, res) => {
             consoleBuffer: []
         });
         
-        // Handle output with buffering
         java.stdout.on('data', (data) => {
             const output = data.toString();
-            const server = servers.get(name);
+            const server = serversMap.get(name);
             if (server) {
                 server.consoleBuffer.push(output);
                 if (server.consoleBuffer.length > 1000) server.consoleBuffer.shift();
                 io.to(`server:${name}`).emit('console', output);
+                console.log(`[${name}] ${output}`);
             }
         });
         
         java.stderr.on('data', (data) => {
             const error = data.toString();
-            const server = servers.get(name);
+            const server = serversMap.get(name);
             if (server) {
-                server.consoleBuffer.push(`ERROR: ${error}`);
+                server.consoleBuffer.push(`§cERROR: ${error}`);
                 io.to(`server:${name}`).emit('console', `§cERROR: ${error}`);
             }
+            console.error(`[${name}] Error: ${error}`);
         });
         
         java.on('close', (code) => {
             console.log(`[${name}] Server stopped with code ${code}`);
-            const server = servers.get(name);
+            const server = serversMap.get(name);
             if (server) {
                 server.status = 'stopped';
                 io.to(`server:${name}`).emit('status', 'stopped');
-                io.to(`server:${name}`).emit('console', `\n§eServer stopped with exit code ${code}\n`);
+                io.to(`server:${name}`).emit('console', `§eServer stopped with exit code ${code}\n`);
             }
         });
         
-        res.json({ success: true, message: `Starting with ${selectedJar}`, ram: ramValue });
+        res.json({ 
+            success: true, 
+            message: `Server ${name} starting with ${selectedJar}`,
+            jarFile: selectedJar,
+            ram: ramValue
+        });
         
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -292,15 +445,15 @@ app.post('/api/server/:name/start', async (req, res) => {
 // Stop server
 app.post('/api/server/:name/stop', (req, res) => {
     const { name } = req.params;
-    const server = servers.get(name);
+    const server = serversMap.get(name);
     
     if (server && server.status === 'running') {
         server.process.stdin.write('stop\n');
         setTimeout(() => {
-            if (servers.has(name) && servers.get(name).status === 'running') {
+            if (serversMap.has(name) && serversMap.get(name).status === 'running') {
                 server.process.kill('SIGTERM');
                 setTimeout(() => {
-                    if (servers.has(name) && servers.get(name).status === 'running') {
+                    if (serversMap.has(name) && serversMap.get(name).status === 'running') {
                         server.process.kill('SIGKILL');
                     }
                 }, 5000);
@@ -316,7 +469,7 @@ app.post('/api/server/:name/stop', (req, res) => {
 app.post('/api/server/:name/command', (req, res) => {
     const { name } = req.params;
     const { command } = req.body;
-    const server = servers.get(name);
+    const server = serversMap.get(name);
     
     if (server && server.status === 'running') {
         server.process.stdin.write(command + '\n');
@@ -329,13 +482,26 @@ app.post('/api/server/:name/command', (req, res) => {
 // Get console history
 app.get('/api/server/:name/console', (req, res) => {
     const { name } = req.params;
-    const server = servers.get(name);
+    const server = serversMap.get(name);
     
     if (server) {
         res.json({ console: server.consoleBuffer || [] });
     } else {
         res.json({ console: [] });
     }
+});
+
+// Get server status
+app.get('/api/server/:name/status', (req, res) => {
+    const { name } = req.params;
+    const server = serversMap.get(name);
+    
+    res.json({
+        status: server ? server.status : 'stopped',
+        uptime: server ? Date.now() - server.startTime : 0,
+        jarFile: server ? server.jarFile : null,
+        ram: server ? server.ram : null
+    });
 });
 
 // List files
@@ -476,10 +642,10 @@ app.delete('/api/server/:name', async (req, res) => {
     const { name } = req.params;
     
     try {
-        const server = servers.get(name);
+        const server = serversMap.get(name);
         if (server && server.status === 'running') {
             server.process.kill();
-            servers.delete(name);
+            serversMap.delete(name);
         }
         
         const serverPath = path.join(__dirname, 'servers', name);
@@ -507,7 +673,7 @@ io.on('connection', (socket) => {
     
     socket.on('subscribe', (serverName) => {
         socket.join(`server:${serverName}`);
-        const server = servers.get(serverName);
+        const server = serversMap.get(serverName);
         if (server && server.consoleBuffer) {
             socket.emit('console-history', server.consoleBuffer);
         }
@@ -522,8 +688,10 @@ io.on('connection', (socket) => {
     });
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`✅ Minecraft Panel running on http://localhost:${PORT}`);
     console.log(`📁 Servers directory: ${path.join(__dirname, 'servers')}`);
+    console.log(`🌐 Local IP: ${getLocalIP()}:${PORT}`);
 });
